@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head>
+	<meta charset="utf-8">
+	<title>WebGPU Compute</title>
+  </head>
+  <body>
+	<canvas id="canvas" width="1" height="1"></canvas>
+	<h1 style="font-family:verdana;">WebGPU Compute</h1>
+	<div style="font-family:verdana;">
+		<p>*VERY SIMPLE* first pass at a webgpu compute demo:</p>
+		<ul>
+			<li>Creates a buffer of 128 floating point values</li>
+			<li>Pressing 'Compute' adds 1 to each of those values</li>
+			<li>Print the buffer</li>
+		</ul>
+	</div>
+	<div><button style="font-family:verdana;" onclick="compute()">Compute</button></div>
+	<div id="buffer-contents" style="font-family:verdana;"></div>
+
+	<script id="computeShader" type="x-shader/x-metal">
+		using namespace metal;
+
+		struct Data {
+			float scalar;
+		};
+
+		kernel void add(device Data *data [[buffer(0)]],
+			uint2 gid [[thread_position_in_grid]])
+		{
+			data[gid.x].scalar = data[gid.x].scalar > 256 ? 0 : data[gid.x].scalar + 1;
+		}
+	</script>
+	<script id="canvas">
+		var canvas, webgpu;
+
+		var computeBuffer;
+		var computeShaderCode;
+		var computeShaderLibrary;
+		var computeFunction;
+		var computePipelineState;
+		var computePipelineDescriptor;
+
+		const dataSize = 128;
+		var computeData = new Float32Array(dataSize);
+
+		function initComputeData() {
+			for( var i=0; i<dataSize; ++i ) {
+				computeData[i]=0;
+			}
+		}
+
+		window.onload = function () {
+			canvas = document.getElementById("canvas");
+			webgpu = canvas.getContext("webgpu");
+
+			computeShaderCode = document.getElementById("computeShader").text;
+			computeShaderLibrary = webgpu.createLibrary(computeShaderCode);
+			computeFunction = computeShaderLibrary.functionWithName("add");
+			computePipelineState = webgpu.createComputePipelineState(computeFunction);
+
+			initComputeData();
+			computeBuffer = webgpu.createBuffer(computeData);
+		}
+
+		compute = function() {
+			var commandQueue = webgpu.createCommandQueue();
+			var commandBuffer = commandQueue.createCommandBuffer();
+
+			// callback for when this command buffer completes
+			commandBuffer.completed.then(function(){
+				var refDataBuffer = new Float32Array(computeBuffer.contents);
+				var displayBuffer = document.getElementById('buffer-contents');
+				displayBuffer.innerHTML = '';
+
+				for( var i=0; i<refDataBuffer.length; ++i )
+				{
+					displayBuffer.innerHTML += '<div>Buffer[' + i + '] = ' + refDataBuffer[i] + '</div>';
+				}
+			});
+
+			var commandEncoder = commandBuffer.createComputeCommandEncoder();
+
+			commandEncoder.setComputePipelineState(computePipelineState);
+
+			commandEncoder.setBuffer(computeBuffer, 0, 0);
+
+			// it's a 1D array
+			var threadgroupsPerGrid = { width: dataSize, height: 1, depth: 1 };
+
+			// ...should these values in computePipelineState be 'undefined' at this point???
+			var w = 32;//computePipelineState.threadExecutionWidth;
+			var h = 16;//computePipelineState.maxTotalThreadsPerThreadgroup / w;
+			var threadsPerThreadgroup = { width: w, height: h, depth: 1 };
+
+			commandEncoder.dispatch(threadgroupsPerGrid, threadsPerThreadgroup);
+
+			commandEncoder.endEncoding();
+
+			commandBuffer.commit();
+		}
+	</script>
+  </body>
+</html>
