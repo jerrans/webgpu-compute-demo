@@ -10,8 +10,8 @@
 	<div style="font-family:verdana;">
 		<p>*VERY SIMPLE* first pass at a webgpu compute demo:</p>
 		<ul>
-			<li>Creates a buffer of 128 floating point values</li>
-			<li>Pressing 'Compute' adds 1 to each of those values</li>
+			<li>Creates a buffer of 1 floating point value</li>
+			<li>Pressing 'Compute' executes a compute shader to add 1 to each value in the buffer</li>
 			<li>Print the buffer</li>
 		</ul>
 	</div>
@@ -39,9 +39,8 @@
 		var computeShaderLibrary;
 		var computeFunction;
 		var computePipelineState;
-		var computePipelineDescriptor;
 
-		const dataSize = 128;
+		const dataSize = 1;
 		var computeData = new Float32Array(dataSize);
 
 		function initComputeData() {
@@ -91,7 +90,7 @@
 			// ...should these values in computePipelineState be 'undefined' at this point???
 			var w = 32;//computePipelineState.threadExecutionWidth;
 			var h = 16;//computePipelineState.maxTotalThreadsPerThreadgroup / w;
-			var threadsPerThreadgroup = { width: w, height: h, depth: 1 };
+			var threadsPerThreadgroup = { width: 1, height: 1, depth: 1 };
 
 			commandEncoder.dispatch(threadgroupsPerGrid, threadsPerThreadgroup);
 
